@@ -59,3 +59,7 @@ slurm-*.log
 *.yml
 *.png
 *.xlsx
+
+#other
+gitkey
+gitkey.pub
