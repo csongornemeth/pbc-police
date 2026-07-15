@@ -12,8 +12,8 @@ from io_utils import get_pdb_dir, collect_xtc_paths, print_header
 
 """
 Run examples:
-python dummy_tpr.py --pdb 1a7u
-python dummy_tpr.py --pdb 3ef4 --group Protein-H
+python dummy_tpr.py --pdb 1jka
+python dummy_tpr.py --pdb 7hzc --group Protein-H
 """
 
 GMX_DEFAULT = "/work001/software/gromacs-bekker-2025/build/bin/gmx"

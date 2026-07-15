@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+env/
+venv/
+*/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MD / simulation outputs
+*.xtc
+*.trr
+*.gro
+*.tpr
+*.edr
+*.log
+*.cpt
+
+# PCA / NMA results
+results/
+plots/
+*.npy
+*.npz
+farthest_com_displacement_results/
+combined_nm_visualisation_results/
+
+# Temporary / cluster
+/tmp/
+scratch/
+/logs
+MD_sims/
+archive/
+batch_files/
+*.out
+*.err
+slurm-*.log
+*.sbatch
+*.bash
+*.json
+*.sbatch~
+*.txt~
+*.tsv
+*.temp.*.*
+*.RData
+*.Rhistory
+*.pdb
+# OS
+.DS_Store
+
+# results
+*.csv
+*.txt
+*.sbatch
+*.yml
+*.png
+*.xlsx

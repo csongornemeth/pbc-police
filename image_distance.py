@@ -12,7 +12,7 @@ from io_utils import get_pdb_dir, print_header
 
 """
 Run example:
-python image_distance.py --pdb 3b9c --group System
+python image_distance.py --pdb 7hzc --group System
 """
 
 GMX_DEFAULT = "/work001/software/gromacs-bekker-2025/build/bin/gmx"
