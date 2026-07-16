@@ -126,7 +126,7 @@ def main():
     if not cleaned_xtcs:
         raise FileNotFoundError(f"No cleaned trajectories found in {tmp_dir}")
 
-    dist_dir = out_root / "periodic_image_distance_0512"
+    dist_dir = out_root / "pi_dist"
     dist_dir.mkdir(parents=True, exist_ok=True)
 
     print_header("Periodic image distance calculation")

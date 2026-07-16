@@ -1,0 +1,484 @@
+# PBC-Police
+
+> **Predicting appropriate periodic boundary box sizes for protein molecular dynamics simulations using Normal Mode Analysis**
+
+PBC-Police is a research software pipeline developed to investigate whether inexpensive Normal Mode Analysis (NMA) can be used to estimate the simulation box size required for explicit-solvent molecular dynamics (MD) simulations while avoiding periodic image artefacts.
+
+The project compares NMA-derived motions with motions observed in MD simulations using Principal Component Analysis (PCA) and evaluates whether predicted protein flexibility can be translated into practical simulation box recommendations.
+
+---
+
+# Project Status
+
+**Current status:** Active research code.
+
+This repository accompanies an ongoing research project. While the main analysis pipeline is functional, interfaces and output formats may continue to evolve.
+
+---
+
+# Scientific Motivation
+
+Choosing an appropriate periodic simulation box is an important step in preparing molecular dynamics simulations.
+
+If the box is too small:
+
+* proteins may interact with their own periodic images,
+* long-range electrostatic calculations become unreliable,
+* simulation artefacts may occur.
+
+If the box is unnecessarily large:
+
+* significantly more solvent molecules are added,
+* computational cost increases,
+* simulation throughput decreases.
+
+This project investigates whether low-frequency normal modes can predict the amount of conformational space explored during MD simulations and therefore estimate an appropriate simulation box before running expensive production simulations.
+
+---
+
+# Repository Structure
+
+```text
+.
+├── README.md
+├── main.py
+├── io_utils.py
+├── traj_utils.py
+├── nma_bio3d.py
+├── pca_stream.py
+├── align_core.py
+├── analysis_utils.py
+├── plot_utils.py
+├── scripts/
+├── results/
+├── raw/
+└── docs/
+```
+
+---
+
+# Main Analysis Pipeline
+
+The primary workflow implemented in `main.py` performs the following steps:
+
+```text
+Protein
+      │
+      ▼
+Locate simulation files
+      │
+      ▼
+Load trajectories
+      │
+      ▼
+Heavy atom selection
+      │
+      ▼
+Trajectory preprocessing
+      │
+      ▼
+Alignment
+      │
+      ▼
+Normal Mode Analysis
+      │
+      ▼
+Incremental PCA
+      │
+      ▼
+NMA–PCA comparison
+      │
+      ▼
+Periodic image analysis
+      │
+      ▼
+Plots + summary statistics
+```
+
+---
+
+# Core Modules
+
+## main.py
+
+Main entry point of the project.
+
+Responsible for:
+
+* processing individual proteins,
+* orchestrating all analyses,
+* generating output directories,
+* coordinating NMA and PCA,
+* producing figures and summary files.
+
+---
+
+## io_utils.py
+
+Input/output management.
+
+Responsibilities include:
+
+* locating available simulation phases,
+* selecting the newest completed phase,
+* validating required files,
+* creating output folders,
+* loading metadata.
+
+---
+
+## traj_utils.py
+
+Trajectory utilities.
+
+Functions include:
+
+* loading trajectories,
+* selecting protein heavy atoms,
+* removing solvent,
+* slicing trajectories,
+* trajectory preprocessing,
+* coordinate extraction.
+
+---
+
+## align_core.py
+
+Determines an appropriate alignment core.
+
+Responsibilities include:
+
+* iterative RMSF analysis,
+* stable residue identification,
+* structural alignment,
+* coordinate transformation.
+
+---
+
+## nma_bio3d.py
+
+Interfaces with Bio3D through R using `rpy2`.
+
+Performs:
+
+* ANM calculations,
+* eigenvalue extraction,
+* eigenvector generation,
+* mode selection.
+
+---
+
+## pca_stream.py
+
+Incremental PCA implementation.
+
+Designed for:
+
+* large trajectories,
+* low memory usage,
+* chunked processing,
+* cumulative variance calculations.
+
+---
+
+## analysis_utils.py
+
+Contains the majority of scientific analyses.
+
+Examples include:
+
+* absolute dot products,
+* confusion matrices,
+* cumulative subspace overlap,
+* RMSF comparison,
+* similarity statistics,
+* summary generation.
+
+---
+
+## plot_utils.py
+
+Produces publication-quality figures including:
+
+* PCA variance plots,
+* dot-product matrices,
+* RMSF comparisons,
+* cumulative overlap figures,
+* best-match summaries,
+* replica comparisons.
+
+---
+
+# Auxiliary Tools
+
+Besides the main pipeline, the repository contains several helper scripts developed during the project.
+
+These are **not required** to run the standard workflow but were useful during data generation, preprocessing, validation, and debugging.
+
+Examples include:
+
+## COM profiling
+
+Utilities for analysing centre-of-mass motion.
+
+Typical applications:
+
+* identifying translational drift,
+* validating trajectory centring,
+* debugging unexpected movement.
+
+---
+
+## Dummy TPR generation
+
+Scripts that generate simplified topology (`.tpr`) files for analyses that require topology information but do not need full production simulation inputs.
+
+Useful for:
+
+* trajectory processing,
+* geometric analyses,
+* rapid testing.
+
+---
+
+## Trajectory preprocessing
+
+Utilities for:
+
+* centring trajectories,
+* removing jumps,
+* repairing periodic boundaries,
+* converting trajectories,
+* extracting protein-only trajectories.
+
+Typically wraps GROMACS commands such as:
+
+* `trjconv`
+* `editconf`
+* `make_ndx`
+
+---
+
+## Dataset preparation
+
+Scripts used for:
+
+* collecting PDBs,
+* organising proteins by size,
+* selecting representative systems,
+* generating processing batches.
+
+---
+
+## SLURM utilities
+
+Scripts developed for HPC execution.
+
+Include:
+
+* job arrays,
+* automatic batch execution,
+* log generation,
+* restart utilities,
+* failed-job detection.
+
+---
+
+## Validation utilities
+
+Small scripts used to verify:
+
+* periodic image distances,
+* PCA convergence,
+* NMA output,
+* trajectory integrity,
+* missing replicas,
+* simulation completeness.
+
+---
+
+# Input Data
+
+The pipeline expects:
+
+* prepared protein structure
+* topology
+* trajectory
+* simulation box
+
+Typical directory layout:
+
+```text
+protein/
+    prep.gro
+    topol.tpr
+    md_0.xtc
+    md_1.xtc
+    ...
+    md_9.xtc
+```
+
+Multiple simulation phases are supported.
+
+---
+
+# Running the Pipeline
+
+Typical execution:
+
+```bash
+python main.py
+```
+
+or on an HPC cluster:
+
+```bash
+sbatch run_analysis.slurm
+```
+
+Protein batches may also be executed using SLURM arrays.
+
+---
+
+# Important Parameters
+
+The following parameters affect the analysis:
+
+* trajectory stride
+* PCA chunk size
+* number of principal components
+* number of normal modes
+* heavy atom selection
+* alignment core
+* number of replicas
+* trajectory length
+* periodic image threshold
+* cutoff distance
+
+---
+
+# Output
+
+Results are generated for each protein.
+
+Typical output:
+
+```text
+results/
+
+    1abc/
+
+        figures/
+
+            dot_products.png
+
+            rmsf.png
+
+            overlap.png
+
+            variance.png
+
+        matrices/
+
+        summaries/
+
+        json/
+
+        logs/
+```
+
+---
+
+# Analyses Performed
+
+The current workflow produces:
+
+* NMA eigenvectors
+* PCA eigenvectors
+* explained variance
+* RMSF
+* dot-product matrices
+* best-mode matching
+* cumulative subspace overlap
+* periodic image distances
+* summary statistics
+
+---
+
+# Dependencies
+
+The project currently relies on:
+
+## Python
+
+* numpy
+* scipy
+* pandas
+* matplotlib
+* scikit-learn
+* mdtraj
+* rpy2
+
+## R
+
+* Bio3D
+
+## External software
+
+* GROMACS
+
+---
+
+# Current Limitations
+
+* Environment-specific paths remain.
+* Configuration is partially hard-coded.
+* Automated tests are incomplete.
+* Helper scripts are heterogeneous.
+* Package installation is not yet standardised.
+* Large MD datasets are not distributed.
+
+---
+
+# Future Improvements
+
+Planned before publication:
+
+* installable Python package
+* configuration files
+* CLI interface
+* automated tests
+* pinned environment
+* reproducible example dataset
+* manuscript figure generation
+* complete documentation
+* Zenodo archive
+* DOI
+* `CITATION.cff`
+
+---
+
+# Citation
+
+Citation information will be added following publication.
+
+---
+
+# License
+
+A license has not yet been selected.
+
+---
+
+# Contact
+
+**Csongor Gergely Németh**
+
+MSc Drug Discovery Sciences
+Specialisation: Computer-Aided Drug Design
+Vrije Universiteit Amsterdam
+c.g.nemeth-at-student.vu.nl
+
+Visiting Researcher
+Institute for Protein Research
+Osaka University
