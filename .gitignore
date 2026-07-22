@@ -11,6 +11,7 @@ venv/
 
 # Jupyter
 .ipynb_checkpoints/
+*.ipynb
 
 # MD / simulation outputs
 *.xtc
