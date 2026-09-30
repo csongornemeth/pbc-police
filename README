@@ -209,6 +209,64 @@ Produces publication-quality figures including:
 
 ---
 
+# Box-size calibration (NM amplitude model)
+
+Turns the NM-helper box into an actual prediction: the NM amplitude is
+predicted from cheap structure/NMA descriptors, calibrated on MD data, and
+tested on held-out proteins. The MD box of a protein is never used to build
+that protein's box.
+
+```text
+calib_required_box.py   per protein   MD replicas -> per-frame extents (how much room it needed)
+calib_nm_envelope.py    per protein   NM helpers  -> box extent vs amplitude, NMA descriptors
+calib_fit_model.py      all proteins  amplitude model + held-out evaluation vs standard boxes
+calib_geometry.py       shared NumPy geometry (unwrapping, superposition, envelopes)
+test_calib.py           self-tests on synthetic data (no MDTraj/R needed)
+calib_slurm_example.sh  SLURM array for the per-protein steps
+```
+
+Definitions
+
+* Extent along axis a: max minus min heavy-atom coordinate. A rectangular box
+  with side L_a keeps periodic images at least c apart along a when
+  L_a >= extent_a + c.
+* Required extent: max over all MD frames (all replicas). `lab` keeps the
+  protein's tumbling (plain MD); `body` removes rotation (flexibility only).
+* Amplitude A: RMS per-atom displacement (nm) along each of the first K
+  internal modes (Bio3D 7..6+K). `thermal` scaling gives mode m
+  A*sqrt(lambda_7/lambda_m).
+* A*: smallest A for which the NM envelope covers the required extent on all
+  three axes.
+* Model: conformalised linear quantile regression of log(A*) on descriptors
+  (size, shape, terminal coil, NMA flexibility), feature set chosen by
+  repeated CV on the training proteins only.
+
+Run
+
+```bash
+python test_calib.py                                    # sanity check
+sbatch --array=1-N%20 calib_slurm_example.sh            # steps 1+2 per protein
+python calib_fit_model.py --pdb-list passing_pdbs.txt \
+    --frame lab --stat max --scaling thermal --n-modes 10 \
+    --cutoff 1.2 --standard-d 1.0 --quantile 0.95
+```
+
+Results go to `results/calibration/<tag>/`: `summary.json` (held-out
+coverage and box volume relative to the standard cubic box, per method),
+`model.json` (coefficients), `test_predictions.csv`, `feature_search_cv.csv`
+and plots.
+
+Known limitations
+
+* The NM envelope does not model rotation. With `--frame lab` the amplitude
+  absorbs tumbling, so the calibration is specific to the simulation length
+  used; with `--frame body` the boxes are only safe if rotation is restrained.
+* Rectangular boxes only; dodecahedral boxes need a rotation-invariant
+  criterion.
+* Uses Bio3D `U`; check whether mass-weighting makes `modes` the right choice.
+
+---
+
 # Auxiliary Tools
 
 Besides the main pipeline, the repository contains several helper scripts developed during the project.

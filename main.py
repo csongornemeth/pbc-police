@@ -27,6 +27,10 @@ from plot_utils import (
 
 from io_utils import get_pdb_dir, collect_xtc_paths, print_header
 
+# nma_modes returned by run_aanma_r_from_traj() start at this Bio3D mode
+# number (modes 1-6 are the trivial rigid-body modes and are dropped).
+FIRST_NMA_MODE = 7
+
 
 def group_xtc_paths_by_replica(xtc_paths):
     """Group XTC paths by replica index inferred from directory structure."""
@@ -155,6 +159,9 @@ def main():
             atom_indices=protein_heavy_idx_full,
             align_indices=core_aidxs,
             save_json_path=pca_json_path,
+            # Align every frame onto the structure NMA was computed on, so
+            # PCA and NMA eigenvectors live in the same rotational frame.
+            ref_xyz=traj_protein_heavy_ref.xyz[0],
         )
 
         plot_pca_variance_thresholds(
@@ -189,10 +196,14 @@ def main():
             kept_pca_idx=kept_pcs,
         )
 
+        # Row 0 of nma_modes / confusion is Bio3D mode 7: the trivial modes
+        # were already removed in run_aanma_r_from_traj(). Plot every row and
+        # shift only the labels.
         plot_nma_pca_subspace_overlap(
             capture=capture,
-            nma_start=7,
-            nma_end=n_modes_keep,
+            nma_start=1,
+            nma_end=nma_modes.shape[0],
+            nma_label_offset=FIRST_NMA_MODE - 1,
             title=f"{pdb_code.upper()} – Replica {rep}: NMA subspace capture by first {k_stack} PCs",
             outfile=out_dir / f"{pdb_code}_rep{rep}_overlap_{k_stack}.png",
         )
@@ -200,16 +211,17 @@ def main():
         plot_nma_pca_stacked_bars(
             confusion=confusion,
             kept_pca_idx=kept_pcs,
-            nma_start=7,
-            nma_end=n_modes_keep,
+            nma_start=1,
+            nma_end=nma_modes.shape[0],
+            nma_label_offset=FIRST_NMA_MODE - 1,
             title=f"{pdb_code.upper()} – Replica {rep}: NMA overlap with first {k_stack} PCs (stacked)",
             outfile=out_dir / f"{pdb_code}_rep{rep}_nma_pca_stacked.png",
         )
 
         # --- PCA overlap stacked by NMA ---
-        nma_start = 7
-        k_nma_stack = 10
-        kept_nma_idx = list(range(nma_start - 1, nma_start - 1 + k_nma_stack))
+        nma_start = FIRST_NMA_MODE          # Bio3D numbering, for labels
+        k_nma_stack = min(10, nma_modes.shape[0])
+        kept_nma_idx = list(range(0, k_nma_stack))   # rows 0.. = modes 7..
 
         _, proj_p = compute_pca_subspace_capture_by_nma(
             confusion=confusion,
@@ -229,6 +241,7 @@ def main():
             confusion,
             out_dir / f"{pdb_code}_rep{rep}_confusion_matrix.png",
             pdb_code=f"{pdb_code} rep{rep}",
+            nma_label_start=FIRST_NMA_MODE,
         )
 
         plot_best_match_barplot(
@@ -236,6 +249,7 @@ def main():
             argbest_per_nma=d["argbest_per_nma"],
             out_path=out_dir / f"{pdb_code}_rep{rep}_bestmatch_barplot.png",
             title=f"{pdb_code.upper()} – Replica {rep}: Best PCA match per NMA mode",
+            nma_label_start=FIRST_NMA_MODE,
         )
 
     # ----- 5) Global confusion matrix -----
@@ -250,6 +264,7 @@ def main():
         confusion_global,
         out_dir / f"{pdb_code}_global_confusion_matrix.png",
         pdb_code=f"{pdb_code} (global mean)",
+        nma_label_start=FIRST_NMA_MODE,
     )
 
     print_header("Pipeline finished successfully")

@@ -16,12 +16,26 @@ def yield_pca_chunks(
     chunk_size: int,
     atom_indices: np.ndarray,
     align_indices: np.ndarray | None = None,
+    ref_xyz: np.ndarray | None = None,
 ):
+    """
+    ref_xyz: optional (n_atoms_sel, 3) reference coordinates in nm, in the
+    same atom order as the sliced trajectory. If given, every frame is
+    superposed onto it (use the structure NMA was computed on). If None,
+    the first frame of the first file is used (old behaviour).
+    """
     print_header("Streaming trajectory chunks for IncrementalPCA")
 
     ref_coords = None
     ref_topology = None
     ref_n_atoms = None
+
+    if ref_xyz is not None:
+        ref_xyz = np.asarray(ref_xyz, dtype=np.float32)
+        if ref_xyz.ndim != 2 or ref_xyz.shape != (len(atom_indices), 3):
+            raise ValueError(
+                f"ref_xyz must have shape ({len(atom_indices)}, 3), got {ref_xyz.shape}"
+            )
 
     for xtc in xtc_paths:
         print(f"[CHUNK] Reading from trajectory file: {xtc}")
@@ -46,7 +60,12 @@ def yield_pca_chunks(
                 )
 
             if ref_coords is None:
-                ref_coords = traj_sel[0].xyz.copy()
+                if ref_xyz is not None:
+                    ref_coords = ref_xyz[None, :, :].copy()
+                    print("[CHUNK] Using supplied reference structure (NMA frame)")
+                else:
+                    ref_coords = traj_sel[0].xyz.copy()
+                    print("[CHUNK] Using first frame as reference")
                 ref_topology = traj_sel.topology
                 ref_n_atoms = traj_sel.n_atoms
                 print(f"[CHUNK] Global reference frame set with {traj_sel.n_atoms} atoms")
@@ -90,6 +109,7 @@ def run_incremental_pca_from_chunks(
     atom_indices: np.ndarray,
     align_indices: np.ndarray | None = None,
     save_json_path: Path | None = None,
+    ref_xyz: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Stream XTCs, align frames, and fit IncrementalPCA.
@@ -106,6 +126,7 @@ def run_incremental_pca_from_chunks(
         chunk_size=chunk_size,
         atom_indices=atom_indices,
         align_indices=align_indices,
+        ref_xyz=ref_xyz,
     ):
         n_frames_chunk, n_features_chunk = X_chunk.shape
         total_frames += n_frames_chunk

@@ -12,7 +12,12 @@ def plot_confusion_matrix(
     confusion_matrix: np.ndarray,
     out_path: Path,
     pdb_code: str,
+    nma_label_start: int = 1,
 ) -> None:
+    """
+    nma_label_start: Bio3D mode number of row 0. The NMA arrays returned by
+    run_aanma_r_from_traj() already exclude the 6 trivial modes, so pass 7.
+    """
     print_header("Plotting confusion matrix heatmap...")
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -30,7 +35,7 @@ def plot_confusion_matrix(
     ax.set_xticks(np.arange(n_pca))
     ax.set_xticklabels(np.arange(1, n_pca + 1))
     ax.set_yticks(np.arange(n_nma))
-    ax.set_yticklabels(np.arange(1, n_nma + 1))
+    ax.set_yticklabels(np.arange(nma_label_start, nma_label_start + n_nma))
 
     plt.setp(ax.get_xticklabels(), rotation=0, ha="center")
 
@@ -60,14 +65,16 @@ def plot_best_match_barplot(
     argbest_per_nma: np.ndarray,
     out_path: Path,
     title: str,
+    nma_label_start: int = 1,
 ) -> None:
     """
     Bar plot of best PCA match per NMA mode, annotated with the PCA mode index.
+    nma_label_start: Bio3D mode number of element 0 (7 when trivial modes are removed).
     """
     print_header("Plotting best-match bar plot...")
 
     n_modes = best_per_nma.shape[0]
-    x = np.arange(1, n_modes + 1)
+    x = np.arange(nma_label_start, nma_label_start + n_modes)
 
     fig, ax = plt.subplots(figsize=(9, 4))
     bars = ax.bar(x, best_per_nma)
@@ -166,10 +173,15 @@ def plot_nma_pca_stacked_bars(
     title: str = "NMA vs PCA mode overlap",
     outfile: str | Path | None = None,
     dpi: int = 200,
+    nma_label_offset: int = 0,
 ) -> None:
     """
     Stacked bar chart where the stack height indicates how well the subspace
     spanned by the selected PCA modes describes each NMA mode.
+
+    nma_start/nma_end are 1-based ROW positions in `confusion`.
+    nma_label_offset is added to the row position for the axis labels
+    (use 6 when row 1 is Bio3D mode 7).
     """
 
     confusion_m = np.asarray(confusion)
@@ -193,7 +205,7 @@ def plot_nma_pca_stacked_bars(
         raise ValueError(f"Invalid NMA range: {nma_start}..{nma_end} for M={M}")
 
     nma_rows = np.arange(nma_start - 1, nma_end)   # 0-based rows
-    x_labels = np.arange(nma_start, nma_end + 1)   # display as 1-based
+    x_labels = np.arange(nma_start, nma_end + 1) + nma_label_offset
 
     # submatrix: selected NMAs x kept PCAs
     D_sub = confusion_m[np.ix_(nma_rows, kept_cols)]
@@ -231,9 +243,13 @@ def plot_nma_pca_subspace_overlap(
     title: str = "NMA subspace capture by selected PCA modes",
     outfile: str | Path | None = None,
     dpi: int = 200,
+    nma_label_offset: int = 0,
 ) -> None:
     """
     Bar plot of subspace capture per NMA mode.
+
+    nma_start/nma_end are 1-based positions in `capture`; nma_label_offset is
+    added for the axis labels (use 6 when element 1 is Bio3D mode 7).
     """
     capture = np.asarray(capture)
 
@@ -241,7 +257,7 @@ def plot_nma_pca_subspace_overlap(
         nma_end = capture.size
 
     y = capture[nma_start - 1 : nma_end]
-    x = np.arange(nma_start, nma_end + 1)
+    x = np.arange(nma_start, nma_end + 1) + nma_label_offset
 
     fig, ax = plt.subplots(figsize=(max(8, 0.4 * len(x)), 4))
     ax.bar(x, y)
